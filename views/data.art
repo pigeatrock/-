@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>下单详情</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+    <style>
+        html,
+        body,
+        .container-fluid,
+        .row {
+            height: 100%;
+        }
+
+        .menu {
+            position:fixed;
+            background-color: #337ab7;
+            height: 100%;
+        }
+        .menu ul{
+            padding: 0;
+            text-align: center;
+            list-style: none;
+        }
+        .menu ul li{
+            margin:10px;
+        }
+        .menu ul li a{
+            text-decoration: none;
+            color: white;
+        }
+        .list{
+            max-width:400px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-1 menu">
+                <ul>
+                    <li><a href="/accent">账号</a></li>
+                    <li><a href="/list">有库存</a></li>
+                    <li><a href="/expire">已下架</a></li>
+                    <li><a href="/watch">监控列表</a></li>
+                    <li><a href="/data">数据</a></li>
+                </ul>
+            </div>
+            <div class="col-md-11 col-md-offset-1">
+                <table class="table table-hover table-condensed">
+                    <tr>
+                        <th>#</th>
+                        <th>订单列表</th>
+                        <th>价格</th>
+                        <th>图片</th>
+                        <th>账号</th>
+                        <th>到期时间</th>
+                    </tr>
+                    <% var num = 0; %>
+                    <% if(orderList != 0) { %>
+                        <% for(var i=0;i<orderList.length;i++) { %>
+                            <% for(var n=0;n<orderList[i]['items'].length;n++) { %>
+                                <% let order = orderList[i]['items'][n]['childOrderList'][0]['mallOrderDetailList'][0]; %>
+                                <% let overTime = orderList[i]['items'][n]['childOrderList'][0]['overTime']; %>
+                                <tr class="success">
+                                    <td><%= ++num %></td>
+                                    <td class="list"><a target="_blank" href="<%= config['goodsDetailBaseUrl']+'/'+ order['productCode'] %>"><%= order['productName']+' ('+order['specifications']+')' %></a></td>
+                                    <td><%= orderList[i]['items'][n]['actualAmount'] %></td>
+                                    <td><img style="width:60px;" src='<%= order['picturePath'] %>'/></td>
+                                    <td><%= orderList[i]['phoneMob'] %></td>
+                                    <td><%= overTime %></td>
+                                </tr>
+                            <% } %>
+                        <% } %>
+                    <% } %>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+    template.defaults.imports.str = function(num){
+        return num+1000;
+    }
+    </script>
+</body>
+</html>

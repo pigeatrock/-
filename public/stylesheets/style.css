@@ -1,0 +1,12 @@
+#floatDialog {
+  display: none;
+  padding: 1px 6px 1px 6px;
+  position: fixed;
+  top: 30px;
+  text-align: center;
+  left: 49%;
+  background-color: #00BCD4;
+  color: #ffffff;
+  border-radius: 5px;
+  box-shadow: 0 0 2px #00BCD4;
+}

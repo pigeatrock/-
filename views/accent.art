@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>账号</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+    <style>
+        html,
+        body,
+        .container-fluid,
+        .row {
+            height: 100%;
+        }
+
+        .menu {
+            background-color: #337ab7;
+            height: 100%;
+        }
+
+        .menu ul {
+            padding: 0;
+            text-align: center;
+            list-style: none;
+        }
+
+        .menu ul li {
+            margin: 10px;
+        }
+
+        .menu ul li a {
+            text-decoration: none;
+            color: white;
+        }
+        /*注册框*/
+        #reg{
+            display:none;
+            background-color: #4593d6;
+            position: absolute;
+            top: 47px;
+            left: 29%;
+            bottom: 0;
+            width: 400px;
+            height: 250px;
+        }
+        #code-img-div{
+            display:none;
+        }
+        #phone-code-div{
+            display:none;
+        }
+        /*登录框*/
+        #lgn{
+            display:none;
+            background-color: #4593d6;
+            position: absolute;
+            top: 47px;
+            left: 29%;
+            bottom: 0;
+            width: 420px;
+            height: 100px;
+            padding: 30px 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-1 menu">
+                <ul>
+                    <li><a href="/accent">账号</a></li>
+                    <li><a href="/list">有库存</a></li>
+                    <li><a href="/expire">已下架</a></li>
+                    <li><a href="/watch">监控列表</a></li>
+                    <li><a href="/data">数据</a></li>
+                </ul>
+            </div>
+            <div class="col-md-11">
+                <a class="btn btn-success" role="button" onclick="showReg()">验证码登录</a>
+                <a class="btn btn-success" role="button" onclick="showLgn()">密码登录</a>
+                <table class="table table-hover table-condensed">
+                    <tr>
+                        <th>#</th>
+                        <th>账号</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                    <% for(var i =0;i<userList.length;i++){ %>
+                        <tr class="success">
+                            <td><%= i+1 %></td>
+                            <td><%= userList[i].mobilePhone %></td>
+                            <td>已登录</td>
+                            <td><button onclick="delUser(<%= userList[i]['uid'] %>)" type="button" class="btn btn-danger">删除</button></td>
+                        </tr>
+                    <% } %>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="lgn">
+        <input type="text" id="accent" name="account" placeholder="填入账号">
+        <input type="text" id="pwd" name="pwd" placeholder="填入密码">
+        <button class="btn btn-success" onclick="sub_pwd()">登录</button>
+    </div>
+    <div id="reg">
+        <input type="text" id="phoneMob" name="phoneMob" placeholder="填入手机号">
+        <button class="btn btn-success" onclick="get(event)">获取图片验证码</button>
+        <div id="code-img-div">
+            <img id="code-img" class="code-img" src="#" alt="验证码图片">
+            <!-- 填写、提交图片验证码， -->
+            <input id="img-code" type="text" class="img-code" placeholder="填入上方图片验证码">
+            <button class="btn btn-success" onclick="sub_img_code()">提交图片验证码</button>
+        </div>
+        <!-- 填写、提交手机验证码 -->
+        <div id="phone-code-div">
+            <div>*稍等将收到特奢汇官网发出的手机短信验证码*</div>
+            <input type="text" id="phone-code" placeholder="填入手机验证码">
+            <button class="btn btn-success" onclick="sub_phone_code()">登录</button>
+        </div>
+    </div>
+    <script>
+    var reg = document.getElementById('reg');//注册框
+    var lgn = document.getElementById('lgn');//登录框
+    var codeImgDiv = document.getElementById('code-img-div');//图片验证码框
+    var phoneCodeDiv = document.getElementById('phone-code-div');//手机验证码框
+    var phoneMob; //手机号
+
+    //密码登录
+        function showLgn(){
+            lgn.style.display = 'block';
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/user/getWebGuid');
+            xhr.send();
+        }
+        //提交账号密码
+        function sub_pwd(){
+            var accent = document.getElementById('accent');
+            var pwd = document.getElementById('pwd');
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    location.reload();
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/user/pwdLogin?accent=' + accent.value + '&pwd=' + pwd.value);
+            xhr.send();
+            reg.style.display = 'none';
+        }
+
+    //验证码登录
+        function showReg(){
+            reg.style.display = 'block';
+            //登录
+            //初始化时
+            //获得webguid
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/user/getWebGuid');
+            xhr.send();
+        }
+        
+        function get(event) {
+            event.target.innerText = '刷新验证码';
+            //获取手机号
+            phoneMob = document.getElementById('phoneMob').value;
+            //获取验证码图片
+            var code_img = document.getElementById('code-img');
+            codeImgDiv.style.display = 'block';
+            code_img.style.display = 'block';
+            var m = Math.random();
+            code_img.src = 'https://m.teshehui.com/user/echo_image?phone=' + phoneMob + '&m=' + m;
+            //获取验证码填写框
+            var img_code = document.getElementById('img-code');
+            img_code.style.display = 'inline-block';
+        }
+        //提交图片验证码
+        function sub_img_code() {
+            var img_code = document.getElementById('img-code');
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    //展示给用户验证码已发送
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/user/getVerificationCode?code=' + img_code.value + '&phoneMob=' +
+                phoneMob);
+            xhr.send();
+            phoneCodeDiv.style.display = 'block';
+        }
+        //提交手机验证码
+        function sub_phone_code() {
+            var phone_code = document.getElementById('phone-code');
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    //展示给用户验证码已发送
+                    location.reload();
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/user/getCheckCode?checkCode=' + phone_code.value);
+            xhr.send();
+            reg.style.display = 'none';
+        }
+        //删除用户
+        function delUser(uid){
+            let xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    location.reload();
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/accent/delUser?uid='+uid);
+            xhr.send();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>请注册后使用</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-10 col-md-offset-3">
+                <h3>
+                    <%= message %>
+                </h3>
+                <input id="code" type="text">
+                <button onclick="sendCode()" type="button" class="btn btn-success">提交注册码</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function sendCode() {
+            let code = document.getElementById('code').value;
+            let xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    location.reload();
+                }
+            }
+            xhr.open('get', '<%= config.baseUrl %>/admin/ver?code=' + code);
+            xhr.send();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>添加账号</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .code-img{
+            display: none;
+        }
+        .img-code{
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <label for="exampleInputEmail1">填入手机号码：</label>
+        <input type="text" class="form-control" id="phoneMob" name="phoneMob" placeholder="手机号">
+        <button onclick="get(event)">获取验证码</button>
+        <img id="code-img" class="code-img" src="#" alt="验证码图片">
+        <!-- 填写、提交图片验证码， -->
+        <input id="img-code" type="text" class="img-code" placeholder="填入图片验证码">
+        <button onclick="sub_img_code()">提交图片验证码</button>
+        <!-- 填写、提交手机验证码 -->
+        <br />
+        <input type="text" id="phone-code" placeholder="填入手机验证码">
+        <button onclick="sub_phone_code()">登录</button>
+        <!-- webguid -->
+        <div id="webguid">webguid:</div>
+    </div>
+</body>
+<script>
+    var phoneMob; //手机号
+    //初始化时
+    //获得webguid
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = () => {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            document.getElementById('webguid').innerText = 'webguid:' + xhr.responseText;
+        }
+    }
+    xhr.open('get', '<%= config.baseUrl %>/user/getWebGuid');
+    xhr.send();
+    // console.log('<%= config.baseUrl %>');
+
+    function get(event) {
+        event.target.innerText = '刷新验证码';
+        //获取手机号
+        phoneMob = document.getElementById('phoneMob').value;
+        //获取验证码图片
+        var code_img = document.getElementById('code-img');
+        code_img.style.display = 'block';
+        var m = Math.random();
+        code_img.src = 'https://m.teshehui.com/user/echo_image?phone=' + phoneMob + '&m=' + m;
+        //获取验证码填写框
+        var img_code = document.getElementById('img-code');
+        img_code.style.display = 'inline-block';
+    }
+    //提交图片验证码
+    function sub_img_code() {
+        var img_code = document.getElementById('img-code');
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                //展示给用户验证码已发送
+            }
+        }
+        xhr.open('get', '<%= config.baseUrl %>/user/getVerificationCode?code=' + img_code.value + '&phoneMob=' +
+            phoneMob);
+        xhr.send();
+    }
+    //提交手机验证码
+    function sub_phone_code() {
+        var phone_code = document.getElementById('phone-code');
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                //展示给用户验证码已发送
+            }
+        }
+        xhr.open('get', '<%= config.baseUrl %>/user/getCheckCode?checkCode=' + phone_code.value);
+        xhr.send();
+    }
+</script>
+
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>下架商品</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+    <link href="/stylesheets/style.css" rel="stylesheet">
+    <script src="/javascripts/main.js"></script>
+    <style>
+        html,
+        body,
+        .container-fluid,
+        .row {
+            height: 100%;
+        }
+
+        .menu {
+            position:fixed;
+            background-color: #337ab7;
+            height: 100%;
+        }
+        .menu ul{
+            padding: 0;
+            text-align: center;
+            list-style: none;
+        }
+        .menu ul li{
+            margin:10px;
+        }
+        .menu ul li a{
+            text-decoration: none;
+            color: white;
+        }
+        .list{
+            max-width:400px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-1 menu">
+                <ul>
+                    <li><a href="/accent">账号</a></li>
+                    <li><a href="/list">有库存</a></li>
+                    <li><a href="/expire">已下架</a></li>
+                    <li><a href="/watch">监控列表</a></li>
+                    <li><a href="/data">数据</a></li>
+                </ul>
+            </div>
+            <div class="col-md-11 col-md-offset-1">
+                <table class="table table-hover table-condensed">
+                    <tr>
+                        <th>#</th>
+                        <th>商品列表</th>
+                        <th>库存</th>
+                        <th>市场价格</th>
+                        <th>会员价格</th>
+                        <th>节省金额</th>
+                        <th>图片</th>
+                        <th>操作</th>
+                    </tr>
+                    <% var num = 0; %>
+                    <% var skuCodeList=[]; %>
+                    <% var goodsArr = list[0]; %>
+                    <% var watchList = list[1]; %>
+                    <% for(let n=0;n<watchList.length;n++) { %>
+                        <% skuCodeList.push(watchList[n]['skuCode']); %>
+                    <% } %>
+                    <% for(var i=0;i<goodsArr.length;i++){ %>
+                        <% var skuCode = ''+goodsArr[i]['skuCode']; %>
+                            <% if(!goodsArr[i]['skuStock']) { %>
+                                <tr class="warning">
+                                <td><%= ++num %></td>
+                                    <td class="list"><a target="_blank" href="<%= config['goodsDetailBaseUrl']+'/'+goodsArr[i]['productCode'] %>"><%= goodsArr[i]['goodsName']+' ('+goodsArr[i]['attr1']+')' %></a></td>
+                                    <td><%= goodsArr[i]['skuStock'] %></td>
+                                    <td><%= goodsArr[i]['markerPrice'] %></td>
+                                    <td><%= goodsArr[i]['memberPrice'] %></td>
+                                    <td><%= goodsArr[i]['saveMoney'] %></td>
+                                    <td><img style="width:60px;" src='<%= goodsArr[i]['imagePath'] %>'/></td>
+                                    <% if(skuCodeList.includes(goodsArr[i]['skuCode'])){ %>
+                                    <td><button type="button" class="btn btn-warning" onclick="<%= 'cancelWatch('+'\''+skuCode+'\''+')' %>">取消监控</button></td>
+                                    <% }else{ %>
+                                    <td><button type="button" class="btn btn-success" onclick="<%= 'watch('+'\''+skuCode+'\''+')' %>">监控</button></td>
+                                    <% } %>
+                                </tr>
+                            <% } %>
+                    <% } %>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="floatDialog"></div>
+</body>
+<script>
+    var fDg = document.getElementById('floatDialog');
+    function watch(sskuCode){
+        console.log('sskuCode:',sskuCode);
+        showFDg(['正在进行监控，请稍等..',2],fDg);
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                if(xhr.responseText == 'err'){
+                    showFDg(['监控出错，请联系管理员'],4)
+                }else if(xhr.responseText == 'ok'){
+                    showFDg(['监控成功',2],fDg);
+                    location.reload();
+                }else{
+                    showFDg(['有问题，请联系管理员'],4)
+                }
+            }
+        }
+        xhr.open('get', '<%= config.baseUrl %>/watch/watch?skuCode='+sskuCode);
+        xhr.send();
+    }
+
+    function cancelWatch(sskuCode){
+        showFDg(['正在取消监控，请稍等..',2],fDg);
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                if(xhr.responseText == 'err'){
+                    showFDg(['删除出错，请联系管理员'],4)
+                }else if(xhr.responseText == 'ok'){
+                    showFDg(['取消成功',2],fDg);
+                    location.reload();
+                }else{
+                    showFDg(['有问题，请联系管理员'],4)
+                }
+            }
+        }
+        xhr.open('get', '<%= config.baseUrl %>/watch/cancelWatch?skuCode='+sskuCode);
+        xhr.send();
+    }
+</script>
+</html>

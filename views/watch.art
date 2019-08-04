@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>监控列表</title>
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+    <link href="/stylesheets/style.css" rel="stylesheet">
+    <script src="/javascripts/main.js"></script>
+    <style>
+        html,
+        body,
+        .container-fluid,
+        .row {
+            height: 100%;
+        }
+
+        .menu {
+            position:fixed;
+            background-color: #337ab7;
+            height: 100%;
+        }
+        .menu ul{
+            padding: 0;
+            text-align: center;
+            list-style: none;
+        }
+        .menu ul li{
+            margin:10px;
+        }
+        .menu ul li a{
+            text-decoration: none;
+            color: white;
+        }
+        .list{
+            max-width:400px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-1 menu">
+                <ul>
+                    <li><a href="/accent">账号</a></li>
+                    <li><a href="/list">有库存</a></li>
+                    <li><a href="/expire">已下架</a></li>
+                    <li><a href="/watch">监控列表</a></li>
+                    <li><a href="/data">数据</a></li>
+                </ul>
+            </div>
+            <div class="col-md-11 col-md-offset-1">
+                <table class="table table-hover table-condensed">
+                    <tr>
+                        <th>#</th>
+                        <th>商品列表</th>
+                        <th>库存</th>
+                        <th>价格</th>
+                        <th>图片</th>
+                        <th>操作</th>
+                    </tr>
+                    <% var num = 0; %>
+                    <% for(var i=0;i<watchList.length;i++){ %>
+                    <% var skuCode = watchList[i]['skuCode']; %>
+                        <tr class="success">
+                            <td><%= ++num %></td>
+                            <td class="list"><a target="_blank" href="<%= config['goodsDetailBaseUrl']+'/'+watchList[i]['productCode'] %>"><%= watchList[i]['goodsName']+' ('+watchList[i]['attr1']+')' %></a></td>
+                            <td><%= watchList[i]['skuStock'] %></td>
+                            <td><%= watchList[i]['memberPrice'] %></td>
+                            <td><img style="width:60px;" src='<%= watchList[i]['imagePath'] %>'/></td>
+                            <td><button type="button" class="btn btn-warning" onclick="<%= 'cancelWatch('+'\''+skuCode+'\''+')' %>">取消监控</button></td>
+                        </tr>
+                    <% } %>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="floatDialog"></div>
+</body>
+<script>
+    var fDg = document.getElementById('floatDialog');
+    function cancelWatch(skuCode){
+        showFDg(['正在取消监控，请稍等..',2],fDg);
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                if(xhr.responseText == 'err'){
+                    showFDg(['删除出错，请联系管理员'],4)
+                }else if(xhr.responseText == 'ok'){
+                    showFDg(['删除成功',2],fDg);
+                    location.reload();
+                }else{
+                    showFDg(['有问题，请联系管理员'],4)
+                }
+            }
+        }
+        xhr.open('get', '<%= config.baseUrl %>/watch/cancelWatch?skuCode='+skuCode);
+        xhr.send();
+    }
+</script>
+</html>

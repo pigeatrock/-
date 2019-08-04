@@ -1,0 +1,201 @@
+#!usr/bin/env node
+//优化下单v1（处理下单崩溃） 2019/4/8/14:50
+var request = require('request');
+var sqlite3 = require('sqlite3').verbose();
+var path = require('path');
+var dir = path.join(process.cwd(), './config.js')
+var config = require(dir);
+
+var watchNum = 0; //监控中的列表数量
+var watchNumTmp = 0; //可变的列表数量
+var isShop = 0; //是否正在下单（锁）
+var skucodeReady = []; //能下单的商品型号
+var readyNum = 0; //能下单的商品数量
+console.log('----------------------监控下单')
+// process.send('----------------------监控下单');
+var db = new sqlite3.Database(config.dbPath, (err) => {
+    if (err) {
+        console.log('Could not connect to database', err)
+    } else {
+        console.log('shop_Connect to database success');
+    }
+})
+
+setInterval(startWatch, config.selectTimeout);
+//监控下单（先检测能否下单，能就下单）
+function startWatch() {
+    let now_time = CurentTime();
+    if (isShop) {
+        console.log(now_time, '----------------------正在下单中...');
+        // process.send(now_time, '----------------------正在下单中...');
+    } else {
+        console.log(now_time, '----------------------开始新一轮下单');
+        // process.send(now_time, '----------------------开始新一轮下单');
+        getWatchList().then((codeList) => {
+            watchNum = codeList.length;
+            for (let i = 0; i < codeList.length; i++) {
+                //检测列表中的轮流下单
+                //{productCode:'070400435269',skuCode:'070400435269001'}
+                hasStock(codeList[i]);
+            }
+        }).catch((err) => {
+            console.log('startWatch_error:', err)
+        })
+    }
+}
+
+function CurentTime() {
+    var now = new Date();
+    var year = now.getFullYear(); //年
+    var month = now.getMonth() + 1; //月
+    var day = now.getDate(); //日
+    var hh = now.getHours(); //时
+    var mm = now.getMinutes(); //分
+    var ss = now.getSeconds(); //秒
+    var clock = year + "-";
+    if (month < 10)
+        clock += "0";
+    clock += month + "-";
+    if (day < 10)
+        clock += "0";
+    clock += day + " ";
+    if (hh < 10)
+        clock += "0";
+    clock += hh + ":";
+    if (mm < 10) clock += '0';
+    clock += mm + ":";
+    if (ss < 10)
+        clock += "0";
+    clock += ss;
+    return (clock);
+}
+//检测商品能否下单
+function hasStock(code) {
+    request({
+        url: 'https://m.teshehui.com/cgi/getProductFreightFee',
+        method: 'POST',
+        form: {
+            productCode: code['productCode']
+        }
+    },
+        (err, res, body) => {
+            watchNumTmp++;
+            try {
+                let data = JSON.parse(body)['data'];
+                if (!data['productInfo']) {
+                    console.log('你也太快了，网速都跟不上-_-!');
+                    return;
+                }
+                let detailData = data['productInfo'];
+                let skuList = detailData['skuList'];
+                for (let y = 0; y < skuList.length; y++) {
+                    let tt = skuList[y];
+                    if (tt['skuCode'] == code['skuCode'] && tt['skuStock']) { //可以下单
+                        isShop = 1;
+                        skucodeReady.push(tt['skuCode']); //可以下单的加入队列中
+                        // makeOrder(code['skuCode']);
+                        if (watchNumTmp == watchNum) {
+                            makeOrder(skucodeReady);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log('hasStock_err:', err);
+            }
+        })
+}
+//轮流下单
+function makeOrder(skuCodeReady) {
+    let orders = 0;
+    readyNum = skuCodeReady.length;
+    for (let x = 0; x < skuCodeReady.length; x++) {
+        let skuCode = skuCodeReady[x]['skuCode'];
+        //获得商品详情
+        let sql = `select * from watchGoods where skuCode = '${skuCode}'`;
+        db.get(sql, [], (err, goodsInfo) => {
+            let scheduleOrderList = [{
+                freeAmount: 0,
+                freightAmount: 0, //运费
+                storeId: goodsInfo['storeId'],
+                productOrderList: [{
+                    userCouponCode: '', //
+                    productType: 1,
+                    costPrice: goodsInfo['memberPrice'],
+                    costTB: 0,
+                    createTime: new Date().getTime(),
+                    productName: goodsInfo['goodsName'],
+                    productSkuCode: skuCode,
+                    productCode: goodsInfo['productCode'],
+                    quantity: 1,
+                    payAmount: goodsInfo['memberPrice'],
+                    payPoint: 0,
+                    userActivityCode: 'A001303', //活动代码
+                    isPresent: 0, //是否是预售
+                    buyType: 2, //
+                    tshAmount: 0,
+                    deliveryType: 2 //
+                }]
+            }];
+            // console.log('scheduleOrderList:', scheduleOrderList)
+            getUserInfo().then((userList) => {
+                let userNum = userList.length;
+                for (let w = 0; w < 20; w++) {
+
+                    // console.log('userList:', userList)
+                    for (let i = 0; i < userList.length; i++) {
+                        (function () {
+                            let orderOptions = {
+                                url: 'https://m.teshehui.com/order/createorder',
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Cookie': 'webguid=' + userList[i].webguid + ';' + 'userid=' + userList[i].userId + ';' + 'skey=' + userList[i].token + ';' + 'invitationcode=undefined; makerinvitationcode=null'
+                                },
+                                form: {
+                                    orderPayAmount: goodsInfo['memberPrice'],
+                                    userType: 0,
+                                    userAddressId: 143139, //
+                                    payPoint: 0,
+                                    scheduleOrderList
+                                }
+                            }
+                            request(orderOptions, (err, res, body) => {
+                                orders++;
+                                if(orders >= 20*userNum*readyNum){
+                                    isShop = 0;
+                                }
+                            })
+                        })()
+                    }
+                }
+            })
+
+        })
+    }
+}
+//检测监控商品列表=>[{productCode,skuCode}]
+function getWatchList() {
+    return new Promise((resolve, reject) => {
+        let sql = `select productCode,skuCode from watchGoods`;
+        db.all(sql, (err, result) => {
+            if (err) {
+                reject(err);
+                console.log('shop_getWatchList_err:', err);
+            } else {
+                resolve(result);
+            }
+        })
+    })
+}
+//从数据库获得登录用户信息
+function getUserInfo() {
+    return new Promise((resolve, reject) => {
+        db.all(`select * from user`, (err, result) => {
+            if (err) {
+                console.log('shop_getUserInfo_err:', err);
+            } else {
+                resolve(result);
+            }
+        })
+    })
+}

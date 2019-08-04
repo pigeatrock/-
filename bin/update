@@ -1,0 +1,157 @@
+#!/usr/bin/env node
+
+var request = require('request');
+var sqlite3 = require('sqlite3').verbose();
+var path = require('path');
+var dir = path.join(process.cwd(), './config.js')
+var config = require(dir);
+console.log('---------------------开始更新数据');
+
+var reg = /var elements = JSON.parse\(([\s\S]*)(?=var serverNow)/g;
+
+var db = new sqlite3.Database(config.dbPath, (err) => {
+    if (err) {
+        console.log('Could not connect to database', err)
+    } else {
+        console.log('Connect to database success');
+    }
+});
+setTimeout(start,20000);
+function start() {
+    getDetailList();
+    updateDbList();
+}
+//获得商品详细列表
+//价格、尺寸、库存
+function getDetailList() {
+    console.log('--------------------------getDetailList', '间隔：', config.detailListTimeout / 1000, '秒')
+    let dbData = []; //数据库数据
+    db.run(`delete from goodsDetail`, (err) => {
+        if (err) {
+            console.log('delete err:', err);
+        } else {
+            getDbGoodsData().then((dbGoodsData) => {
+                for (let m = 0; m < dbGoodsData.length; m++) {
+                    dbData.push(dbGoodsData[m]['gId']);
+                }
+                for (let i = 0; i < dbData.length;) {
+                    (function () {
+                        let itemNum = dbData[i];
+                        i++;
+                        //刷新
+                        if (i >= dbData.length) {
+                            setTimeout(getDetailList, config.detailListTimeout);
+                        }
+                        request({
+                                url: 'https://m.teshehui.com/cgi/getProductFreightFee',
+                                method: 'POST',
+                                form: {
+                                    productCode: itemNum
+                                }
+                            },
+                            (err, res, body) => {
+                                let data = JSON.parse(body)['data'];
+                                let detailData = data['productInfo'];
+                                let skuList = detailData['skuList'];
+                                let pSM = data['productStoreModel']; //productStoreModel
+                                for (let y = 0; y < skuList.length; y++) {
+                                    let tt = skuList[y];
+                                    db.run(`insert into goodsDetail (productCode,skuCode,skuStock,attr1,markerPrice,memberPrice,saveMoney,imagePath,storeId,supplierId) values(?,?,?,?,?,?,?,?,?,?)`,
+                                        [itemNum, tt['skuCode'], tt['skuStock'], tt['attr1']['attrValue'], tt['markerPrice'], tt['memberPrice'], tt['saveMoney'], tt['imageOPList'][0]['imagePath'], pSM['storeId'], pSM['supplierId']]);
+                                }
+                            })
+                    })()
+                }
+            })
+        }
+    })
+}
+
+function getGoods() {
+    return new Promise((resolve, reject) => {
+        getGoodsStr().then((body) => {
+            var goodList;
+            var str_tmp = body.match(reg);
+            str_tmp = str_tmp[0];
+            strP1 = str_tmp.indexOf('[');
+            strP2 = str_tmp.lastIndexOf(']');
+            goodList_tmp = str_tmp.substring(strP1, strP2 + 1);
+            goodList = JSON.parse(goodList_tmp)[7]['elements'];
+            resolve(goodList);
+        })
+    })
+}
+//获得商品列表字符串
+function getGoodsStr() {
+    return new Promise((resolve, reject) => {
+        request(config.goodsUrl, (err, res, body) => {
+            resolve(body);
+        })
+    })
+}
+//更新数据库
+function updateDbList() {
+    console.log('---------------------------------updateDbList,间隔：', config.listTimeout / 1000, '秒')
+    isWebNew();
+    isDbOld();
+}
+
+//检测商品是否更新(1、没有的数据添加进数据库)
+//有新数据则返回数据，没有返回false
+function isWebNew() {
+    let dbData = []; //数据库数据
+    let newData = []; //新的数据push进这里,存入数据库
+    getDbGoodsData().then((dbGoodsData) => {
+        for (let m = 0; m < dbGoodsData.length; m++) {
+            dbData.push(dbGoodsData[m]['gId']);
+        }
+        getGoods().then((goodList) => {
+            for (let i = 0; i < goodList.length; i++) {
+                let webGoodsData = goodList[i]['elements'][0]['goodsData'];
+                for (let n = 0; n < webGoodsData.length; n++) { //
+                    if (!dbData.includes(webGoodsData[n][2])) {
+                        db.run(`insert into goodsData (gId,goodsName) values(?,?)`, [webGoodsData[n][2], webGoodsData[n][1]])
+                        newData.push(webGoodsData[n])
+                    }
+                }
+            }
+            if (newData.toString()) {
+                return newData;
+            } else {
+                return false;
+            }
+        })
+    })
+}
+//检测商品是否更新(2、多余的数据从数据库删除)
+function isDbOld() {
+    var webDataNum = []; //web数据
+    getGoods().then((goodList) => {
+        for (let i = 0; i < goodList.length; i++) {
+            let webGoodsData = goodList[i]['elements'][0]['goodsData'];
+            for (let n = 0; n < webGoodsData.length; n++) { //
+                webDataNum.push(webGoodsData[n][2])
+            }
+        }
+        getDbGoodsData().then((dbGoodsData) => {
+            for (let m = 0; m < dbGoodsData.length; m++) {
+                if (!webDataNum.includes(dbGoodsData[m]['gId'])) { //数据库多的数据
+                    db.run(`delete from goodsData where gId=?`, [dbGoodsData[m]['gId']])
+                }
+            }
+            setTimeout(updateDbList, config.listTimeout);
+        })
+    })
+}
+//从数据库获得商品列表
+function getDbGoodsData() {
+    return new Promise((resolve, reject) => {
+        db.all('select gId from goodsData', (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        })
+    })
+}
